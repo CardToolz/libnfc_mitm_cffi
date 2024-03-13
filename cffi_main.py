@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from libnfc_ffi.libnfc_ffi import ffi, libnfc as nfc
+from libnfc_ffi import ffi, nfc
 
 ctx = ffi.new("nfc_context**")
 

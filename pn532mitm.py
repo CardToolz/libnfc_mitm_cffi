@@ -26,7 +26,7 @@ device.connstring = "pn532_uart:/dev/ttyS0"
 from nfc_wrapper import *
 from nfc_helper import *
 from NFCRelay import *
-from libnfc_ffi.libnfc_ffi import libnfc as nfc
+from libnfc_ffi import nfc
 from datetime import datetime
 import argparse, os, sys
 import random

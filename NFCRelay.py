@@ -1,7 +1,7 @@
 # from nfc_ctypes import *
 from nfc_wrapper import *
 from nfc_helper import *
-from libnfc_ffi.libnfc_ffi import libnfc as nfc
+from libnfc_ffi import nfc
 from time import time, sleep
 from enum import Enum
 

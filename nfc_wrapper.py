@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # to trace shared lib calls use "ltrace --library="*libnfc*" python3 ./nfc_wrapper.py"
-from libnfc_ffi.libnfc_ffi import ffi, libnfc as nfc
+from libnfc_ffi import ffi, nfc
 import nfc_helper 
 from hexdump import *
 import time
