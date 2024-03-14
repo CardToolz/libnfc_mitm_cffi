@@ -22,7 +22,7 @@ def main():
                      log_fname=arguments.log_fname)
     print(f"Log file name: {fl.log_fname}")
     fl.load()
-    print(f"Loaded {fl.get_frame_list_len()} frames")
+    print(f"Loaded {len(fl.frames)} frames")
     fl.print()
 
 
