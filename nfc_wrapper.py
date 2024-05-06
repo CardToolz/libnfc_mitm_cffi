@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 # to trace shared lib calls use "ltrace --library="*libnfc*" python3 ./nfc_wrapper.py"
-from libnfc_ffi import ffi, nfc
-import nfc_helper 
-from hexdump import *
-import time
-from pprint import pprint
-from inspect import getmembers
-
 import logging
+import time
+from inspect import getmembers
+from pprint import pprint
+
+from hexdump import *
+
+import nfc_helper
+from libnfc_ffi import ffi, nfc
+
 logger = logging.getLogger(__name__)
 
 # def eprint(*args, **kwargs):
@@ -29,15 +31,18 @@ def cdata_dict(cd):
     else:
         return cd
 
+
 def pprint_cdata(cd, print_hex=False):
-    logger.debug('cdata info: {}, sizeof()={}'.format(cd, ffi.sizeof(cd)))
+    logger.debug("cdata info: {}, sizeof()={}".format(cd, ffi.sizeof(cd)))
     logger.debug(cdata_dict(cd))
     if print_hex:
         c = ffi.buffer(cd)
-        logger.debug(hexdump(c, result='return'))
-    
+        logger.debug(hexdump(c, result="return"))
+
+
 def hexbytes(data):
     return " ".join(["{:02x}".format(x) for x in data])
+
 
 sErrorMessages = {
     # /* Chip-level errors (internal errors, RF errors, etc.) */
@@ -70,8 +75,10 @@ c = ctx[0]
 def get_version_str():
     return cffi_chars_to_str(nfc.nfc_version())
 
+
 def nfc_exit():
     nfc.nfc_exit(c)
+
 
 def list_devices(verbose=False):
     result = []
@@ -79,18 +86,24 @@ def list_devices(verbose=False):
     for i in range(num_devices):
         result.append(NFC_DEVICE_LIST[i])
     if verbose:
-        print ('libNFC devices ({}):'.format(num_devices))
+        print("libNFC devices ({}):".format(num_devices))
         for i in range(num_devices):
             dev = nfc.nfc_open(c, result[i])
             devname = cffi_chars_to_str(nfc.nfc_device_get_name(dev))
-            print('\tNo: {}\t\t{}'.format(i, devname))
+            print("\tNo: {}\t\t{}".format(i, devname))
             # nfc.nfc_close(dev)
     return result
 
 
-
 class NfcDevice(object):
-    def __init__(self, devdesc=None, verbosity=0, modtype=nfc.NMT_ISO14443A, baudrate=nfc.NBR_106, timeout=5000):
+    def __init__(
+        self,
+        devdesc=None,
+        verbosity=0,
+        modtype=nfc.NMT_ISO14443A,
+        baudrate=nfc.NBR_106,
+        timeout=5000,
+    ):
         logger.debug("NfcDevice init")
         self._device = nfc.nfc_open(c, devdesc)
         self._device_name = cffi_chars_to_str(nfc.nfc_device_get_name(self._device))
@@ -105,9 +118,11 @@ class NfcDevice(object):
         # time.sleep(0.5) # 50ms removes error "libnfc.driver.pn532_spi Unable to wait for SPI data. (RX)"
 
     def get_last_err(self):
-        logger.debug("get_lasst_err: {}, {}".format(self.last_err, sErrorMessages[self.last_err]))
+        logger.debug(
+            "get_lasst_err: {}, {}".format(self.last_err, sErrorMessages[self.last_err])
+        )
         return self.last_err
-    
+
     def set_modulation(self, modtype, baudrate):
         logger.debug("set_modulation")
         self.nm.nmt = modtype
@@ -119,7 +134,9 @@ class NfcDevice(object):
         ret = nfc.nfc_device_set_property_bool(self._device, option, value)
         self.last_err = ret
         if ret < nfc.NFC_SUCCESS:
-            logger.warning("set_property_bool() setting option {0} to {1}".format(option, value))
+            logger.warning(
+                "set_property_bool() setting option {0} to {1}".format(option, value)
+            )
         return ret
 
     def set_property_int(self, option, value: int):
@@ -128,7 +145,9 @@ class NfcDevice(object):
         ret = nfc.nfc_device_set_property_int(self._device, option, value)
         self.last_err = ret
         if ret < nfc.NFC_SUCCESS:
-            logger.warning("set_property_int() setting option {0} to {1}".format(option, value))
+            logger.warning(
+                "set_property_int() setting option {0} to {1}".format(option, value)
+            )
         return ret
 
 
@@ -141,17 +160,19 @@ class NfcTarget(NfcDevice):
 
     def init(self, targettype=None, timeout=0):
         logger.debug("NfcTarget init")
-        if targettype==None:
+        if targettype == None:
             targettype = self.prepare_emulated_target()
 
-        ret = nfc.nfc_target_init(self._device, targettype, self._rxbytes, MAX_FRAME_LEN, timeout)
+        ret = nfc.nfc_target_init(
+            self._device, targettype, self._rxbytes, MAX_FRAME_LEN, timeout
+        )
         self.last_err = ret
 
         if ret < nfc.NFC_SUCCESS:
             logger.warning("init() error: {}, {}".format(ret, sErrorMessages[ret]))
         self._nt = targettype
         return ret
-    
+
     def get_target(self):
         return self._nt
 
@@ -189,20 +210,22 @@ class NfcTarget(NfcDevice):
         logger.debug("receive_bytes")
         if timeout is None:
             timeout = self.timeout
-        ret = nfc.nfc_target_receive_bytes(self._device, self._rxbytes, MAX_FRAME_LEN, timeout)
+        ret = nfc.nfc_target_receive_bytes(
+            self._device, self._rxbytes, MAX_FRAME_LEN, timeout
+        )
         self.last_err = ret
 
         if ret < nfc.NFC_SUCCESS:
             logger.warning("receive_bytes() error{}: ".format(ret))
         data = bytearray(ffi.buffer(self._rxbytes, ret))
-        logger.info('T<I[%2X]: %s' % (len(data), hexbytes(data)))
+        logger.info("T<I[%2X]: %s" % (len(data), hexbytes(data)))
         return data, ret
 
     def send_bytes(self, txbytes, timeout=None):
         logger.debug("send_bytes")
         if timeout is None:
             timeout = self.timeout
-        logger.info('T>I[%2X]: %s' % (len(txbytes), hexbytes(txbytes)))
+        logger.info("T>I[%2X]: %s" % (len(txbytes), hexbytes(txbytes)))
         tx_len = len(txbytes)
         self._txbytes[0:tx_len] = txbytes
         ret = nfc.nfc_target_send_bytes(self._device, self._txbytes, tx_len, timeout)
@@ -217,7 +240,6 @@ class NfcTarget(NfcDevice):
 
     def send_bits(self, *args, **kwargs):
         raise NotImplementedError("send_bits() not implemented")
-
 
 
 class NfcInitiator(NfcDevice):
@@ -250,12 +272,15 @@ class NfcInitiator(NfcDevice):
         max_targets_length = 16
         nt = ffi.new("nfc_target[{}]".format(max_targets_length))
         # time.sleep(0.5) # 50ms removes error "libnfc.driver.pn532_spi Unable to wait for SPI data. (RX)"
-        ret = nfc.nfc_initiator_list_passive_targets(self._device, self.nm[0], 
-                                                             nt, max_targets_length)
+        ret = nfc.nfc_initiator_list_passive_targets(
+            self._device, self.nm[0], nt, max_targets_length
+        )
         self.last_err = ret
 
         if ret < nfc.NFC_SUCCESS:
-            logger.warning("list_passive_targets() error: {}".format(sErrorMessages[ret]))
+            logger.warning(
+                "list_passive_targets() error: {}".format(sErrorMessages[ret])
+            )
         for target_n in range(ret):
             result.append(nt[target_n])
         logger.info("list_passive_targets() num_targets: {}".format(ret))
@@ -263,21 +288,25 @@ class NfcInitiator(NfcDevice):
         # time.sleep(0.5) # 50ms removes error "libnfc.driver.pn532_spi Unable to wait for SPI data. (RX)"
         return ret, result
 
-
     def select_passive_target(self, initdata=None):
         logger.debug("select_passive_target")
         nt = ffi.new("nfc_target*")
         if initdata is None:
-            ret = nfc.nfc_initiator_select_passive_target(self._device, self.nm[0], ffi.NULL, 0, nt)
+            ret = nfc.nfc_initiator_select_passive_target(
+                self._device, self.nm[0], ffi.NULL, 0, nt
+            )
         else:
-            ret = nfc.nfc_initiator_select_passive_target(self._device, self.nm[0], 
-                                                          initdata, len(initdata), nt)
+            ret = nfc.nfc_initiator_select_passive_target(
+                self._device, self.nm[0], initdata, len(initdata), nt
+            )
         self.last_err = ret
 
         if ret < nfc.NFC_SUCCESS:
-            logger.warning("select_passive_target() error: {}, {}".format(ret, sErrorMessages[ret]))
+            logger.warning(
+                "select_passive_target() error: {}, {}".format(ret, sErrorMessages[ret])
+            )
         return ret, nt
-    
+
     def deselect_target(self, *args, **kwargs):
         raise NotImplementedError("deselect_target() not implemented")
 
@@ -291,21 +320,21 @@ class NfcInitiator(NfcDevice):
         logger.debug("transceive_bytes()")
         if timeout is None:
             timeout = self.timeout
-        logger.info('I>T[%2X]: %s' % (len(txbytes), hexbytes(txbytes)))
+        logger.info("I>T[%2X]: %s" % (len(txbytes), hexbytes(txbytes)))
         tx_len = len(txbytes)
         self._txbytes[0:tx_len] = txbytes
         rx_len = MAX_FRAME_LEN
-        ret = nfc.nfc_initiator_transceive_bytes(self._device, self._txbytes, tx_len, 
-                                                    self._rxbytes, rx_len, timeout)
+        ret = nfc.nfc_initiator_transceive_bytes(
+            self._device, self._txbytes, tx_len, self._rxbytes, rx_len, timeout
+        )
         self.last_err = ret
 
         data = bytearray(ffi.buffer(self._rxbytes, ret))
-        logger.info('I<T[%2X]: %s' % (len(data), hexbytes(data)))
+        logger.info("I<T[%2X]: %s" % (len(data), hexbytes(data)))
         return data, ret
 
     def transceive_bits(self, *args, **kwargs):
         raise NotImplementedError("transceive_bits() not implemented")
-
 
 
 if __name__ == "__main__":
@@ -319,7 +348,6 @@ if __name__ == "__main__":
     print("logger.level: ", logger.level)
     print(__name__)
     print("logger.name: ", logger.name)
-
 
     version = get_version_str()
     print("libNfc version:", version)
@@ -340,7 +368,7 @@ if __name__ == "__main__":
     if res == 0:
         print("No tags found")
         exit(0)
-    initdata = nt[0].nti.nai.abtUid[0:nt[0].nti.nai.szUidLen]
+    initdata = nt[0].nti.nai.abtUid[0 : nt[0].nti.nai.szUidLen]
     # print("initdata: ", initdata, len(initdata))
     try:
         res = i.select_passive_target(initdata=initdata)
@@ -371,4 +399,3 @@ if __name__ == "__main__":
     data, data_len = i.transceive_bytes(data)
     # print("transceive_bytes() ret: ", ret)
     data_len = t.send_bytes(data)
-

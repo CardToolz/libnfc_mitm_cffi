@@ -1,27 +1,33 @@
 # from nfc_ctypes import *
-from nfc_wrapper import *
-from nfc_helper import *
-from libnfc_ffi import nfc
-from time import time, sleep
-from enum import Enum
-
 import logging
+from enum import Enum
+from time import sleep, time
+
+from libnfc_ffi import nfc
+from nfc_helper import *
+from nfc_wrapper import *
+
 logger = logging.getLogger(__name__)
 
 hex2str = lambda x: bytearray.fromhex(x.replace(" ", ""))
 
 apple_frame_sequence = []  # Apple specific frame sequence
-apple_frame_sequence.append(hex2str('6a  02  c8  01  00  03  00  02  79  00  00  00  00  c2  d8'))
-apple_frame_sequence.append(hex2str('52'))
-apple_frame_sequence.append(hex2str('93  20'))
-apple_frame_sequence.append(hex2str('93  70  00  00  00  00  00  9c  d9'))
+apple_frame_sequence.append(
+    hex2str("6a  02  c8  01  00  03  00  02  79  00  00  00  00  c2  d8")
+)
+apple_frame_sequence.append(hex2str("52"))
+apple_frame_sequence.append(hex2str("93  20"))
+apple_frame_sequence.append(hex2str("93  70  00  00  00  00  00  9c  d9"))
+
 
 def time_ms():
     return int(time() * 1000)
 
+
 def data_hook_default(direction, data, easy_framing):
     send_fragmented = False
     return send_fragmented, data
+
 
 class MitmState(Enum):
     FROM_READER = 0
@@ -33,15 +39,17 @@ class MitmState(Enum):
 
 
 class NFCRelay:
-    def __init__(self, initiator_dev_num, target_dev_num, easy_framing=True, log_fname=None):
+    def __init__(
+        self, initiator_dev_num, target_dev_num, easy_framing=True, log_fname=None
+    ):
         self.data_hook = data_hook_default
-        self.initiator_dev_num = initiator_dev_num 
-        self.target_dev_num = target_dev_num 
+        self.initiator_dev_num = initiator_dev_num
+        self.target_dev_num = target_dev_num
         self.easy_framing = easy_framing
-        self.pndReader = None # NfcInitiator
-        self.pndTag = None # NfcTarget
-        self.passive_targets_list = None 
-        self.real_target = None 
+        self.pndReader = None  # NfcInitiator
+        self.pndTag = None  # NfcTarget
+        self.passive_targets_list = None
+        self.real_target = None
         self.emulated_target = None
         self.target_modulation = None
         self.targettype = None
@@ -66,12 +74,14 @@ class NFCRelay:
         # self.pndReader.configure(NP_AUTO_ISO14443_4, True)
         # self.pndReader.configure_int(NP_TIMEOUT_COMMAND, self.timeout)
         return True
-        
+
     def reader_get_targets(self, timeout_ms=0):
         tags_count = 0
-        start_time = time_ms() 
+        start_time = time_ms()
         while (start_time + timeout_ms > time_ms()) or (timeout_ms == 0):
-            if self.apple_transport: # TODO: fix apple transport activation. Transceive bits is not working
+            if (
+                self.apple_transport
+            ):  # TODO: fix apple transport activation. Transceive bits is not working
                 # print ("Apple specific transport(travel) card activation")
                 # self.pndReader.configure(nfc.nfc.NP_HANDLE_CRC, False)
                 for x in range(0, 2):
@@ -80,7 +90,9 @@ class NFCRelay:
                 self.pndReader.transceive_bytes(apple_frame_sequence[2])
                 # # pndReader.initiator_transceive_bytes(str4) # is not necessary
 
-            tags_count, self.passive_targets_list = self.pndReader.list_passive_targets()
+            tags_count, self.passive_targets_list = (
+                self.pndReader.list_passive_targets()
+            )
             print("Passive targets list: {}".format(self.passive_targets_list))
             # tags_count = len(self.passive_targets_list)
             if tags_count > 0:
@@ -88,7 +100,7 @@ class NFCRelay:
 
         if (start_time + timeout_ms < time_ms()) and (timeout_ms != 0):
             print("Timeout", start_time, time_ms())
-        
+
         return tags_count
 
     def select_target(self, tag_index=0):
@@ -96,14 +108,14 @@ class NFCRelay:
             logger.warning("Wrong tag index")
             return False
         nt = self.passive_targets_list[tag_index]
-        initdata = nt.nti.nai.abtUid[0:nt.nti.nai.szUidLen]
+        initdata = nt.nti.nai.abtUid[0 : nt.nti.nai.szUidLen]
         ret, self.real_target = self.pndReader.select_passive_target(initdata=initdata)
-        if ret < nfc.NFC_SUCCESS: 
-            logger.info('libnfc error, trying again')
+        if ret < nfc.NFC_SUCCESS:
+            logger.info("libnfc error, trying again")
             ret, self.real_target = self.pndReader.select_passive_target()
         if ret < nfc.NFC_SUCCESS:
             raise IOError("NFC Error whilst selecting target")
-    
+
     # def emulator_prepare_from_target(self):
     #     target_info = nfc_target_info(self.real_target.nti.nai)
     #     target_modulation = nfc_modulation(self.relay_modtype, self.relay_baud)
@@ -130,12 +142,11 @@ class NFCRelay:
     #     self.emulated_target.nti.nai.abtAts[3] = 0x03
     #     self.emulated_target.nti.nai.szAtsLen = 0x04
     #     # self.emulated_target.nti.nai.abtAts[0] = 0x78
-    #     # self.emulated_target.nti.nai.abtAts[1] = 0x77 
+    #     # self.emulated_target.nti.nai.abtAts[1] = 0x77
     #     # self.emulated_target.nti.nai.abtAts[2] = 0x88
     #     # self.emulated_target.nti.nai.abtAts[3] = 0x02
     #     # self.emulated_target.nti.nai.abtAts[4] = 0x80
     #     # self.emulated_target.nti.nai.szAtsLen = 0x05
-
 
     #     # if self.real_target.nti.nai.szAtsLen < 4:
     #     #     self.emulated_target.nti.nai.szAtsLen = 0x04
@@ -184,7 +195,11 @@ class NFCRelay:
         self.pndTag.set_property_bool(nfc.NP_EASY_FRAMING, self.easy_framing)
         start_time = time_ms()
         try:
-            while (start_time + timeout_ms > time_ms()) or (timeout_ms == 0) and not is_done:
+            while (
+                (start_time + timeout_ms > time_ms())
+                or (timeout_ms == 0)
+                and not is_done
+            ):
                 logger.info("State = {}".format(state))
                 self.pndTag.set_property_bool(nfc.NP_EASY_FRAMING, self.easy_framing)
                 self.pndReader.set_property_bool(nfc.NP_EASY_FRAMING, self.easy_framing)
@@ -192,58 +207,118 @@ class NFCRelay:
                 # sleep(0.1)
                 if state == MitmState.FROM_READER:
                     target_recvd, ret = self.pndTag.receive_bytes(timeout=timeout_ms)
-                    self.fl.add_frame_by_data(index=index, time=time(), data=target_recvd, result=ret, direction=FrameDirection.FROM_READER)
+                    self.fl.add_frame_by_data(
+                        index=index,
+                        time=time(),
+                        data=target_recvd,
+                        result=ret,
+                        direction=FrameDirection.FROM_READER,
+                    )
                     if ret <= nfc.NFC_SUCCESS:
-                        print ("Receive from reader result: ({}) {}".format(ret, sErrorMessages[ret]))
+                        print(
+                            "Receive from reader result: ({}) {}".format(
+                                ret, sErrorMessages[ret]
+                            )
+                        )
                         is_done = True
                         continue
                     state = MitmState.READER_CARD_HOOK
 
                 elif state == MitmState.READER_CARD_HOOK:
                     if self.data_hook is not None:
-                        fragmented, target_recvd = self.data_hook(FrameDirection.FROM_READER, target_recvd, self.easy_framing)
+                        fragmented, target_recvd = self.data_hook(
+                            FrameDirection.FROM_READER, target_recvd, self.easy_framing
+                        )
                     state = MitmState.TRANSCEIVE_CARD
 
-                elif state == MitmState.TRANSCEIVE_CARD: # TODO: implement fragmented transceive
-                    self.fl.add_frame_by_data(index=index, time=time(), data=target_recvd, result=ret, direction=FrameDirection.TO_CARD, easy_framing=self.easy_framing)
+                elif (
+                    state == MitmState.TRANSCEIVE_CARD
+                ):  # TODO: implement fragmented transceive
+                    self.fl.add_frame_by_data(
+                        index=index,
+                        time=time(),
+                        data=target_recvd,
+                        result=ret,
+                        direction=FrameDirection.TO_CARD,
+                        easy_framing=self.easy_framing,
+                    )
                     reader_recvd, ret = self.pndReader.transceive_bytes(target_recvd)
                     index += 1
-                    self.fl.add_frame_by_data(index=index, time=time(), data=reader_recvd, result=ret, direction=FrameDirection.FROM_CARD, easy_framing=self.easy_framing)
+                    self.fl.add_frame_by_data(
+                        index=index,
+                        time=time(),
+                        data=reader_recvd,
+                        result=ret,
+                        direction=FrameDirection.FROM_CARD,
+                        easy_framing=self.easy_framing,
+                    )
                     if ret <= nfc.NFC_SUCCESS:
-                        print ("Tag/device transceive result: ({}) {}".format(ret, sErrorMessages[ret]))
+                        print(
+                            "Tag/device transceive result: ({}) {}".format(
+                                ret, sErrorMessages[ret]
+                            )
+                        )
                         is_done = True
                         continue
                     state = MitmState.CARD_READER_HOOK
                 elif state == MitmState.CARD_READER_HOOK:
                     if self.data_hook is not None:
-                        fragmented, reader_recvd = self.data_hook(FrameDirection.FROM_CARD, reader_recvd, self.easy_framing)
+                        fragmented, reader_recvd = self.data_hook(
+                            FrameDirection.FROM_CARD, reader_recvd, self.easy_framing
+                        )
                     state = MitmState.TO_READER
 
-                elif state == MitmState.TO_READER:                
+                elif state == MitmState.TO_READER:
                     if fragmented:
-                        ret = self.target_send_fragmented(index=index, data=reader_recvd)
+                        ret = self.target_send_fragmented(
+                            index=index, data=reader_recvd
+                        )
                         # state = MitmState.FROM_READER_FRAGMENT
                         state = MitmState.FROM_READER
                         # print("fragmented send is done")
                     else:
                         ret = self.pndTag.send_bytes(reader_recvd)
-                        self.fl.add_frame_by_data(index=index, time=time(), data=reader_recvd, result=ret, direction=FrameDirection.TO_READER, easy_framing=self.easy_framing)
+                        self.fl.add_frame_by_data(
+                            index=index,
+                            time=time(),
+                            data=reader_recvd,
+                            result=ret,
+                            direction=FrameDirection.TO_READER,
+                            easy_framing=self.easy_framing,
+                        )
                         state = MitmState.FROM_READER
 
                     index += 1
                     # print("ToReader next state: {}".format(state))
                     if ret <= nfc.NFC_SUCCESS:
-                        print ("Send to reader result: ({}) {}".format(ret, sErrorMessages[ret]))
+                        print(
+                            "Send to reader result: ({}) {}".format(
+                                ret, sErrorMessages[ret]
+                            )
+                        )
                         is_done = True
                         continue
 
                 elif state == MitmState.FROM_READER_FRAGMENT:
                     # print("FromReaderFragment")
-                    target_recvd, ret = self.target_receive_fragmented(timeout=timeout_ms)
-                    self.fl.add_frame_by_data(index=index, time=time(), data=target_recvd, result=ret, direction=FrameDirection.FROM_READER, easy_framing=self.easy_framing)
+                    target_recvd, ret = self.target_receive_fragmented(
+                        timeout=timeout_ms
+                    )
+                    self.fl.add_frame_by_data(
+                        index=index,
+                        time=time(),
+                        data=target_recvd,
+                        result=ret,
+                        direction=FrameDirection.FROM_READER,
+                        easy_framing=self.easy_framing,
+                    )
                     # print_frame(self.fl.frames[-1])
                     if ret <= nfc.NFC_SUCCESS:
-                        print ("Receive from reader result: ({}) {}".format(ret, sErrorMessages[ret]))
+                        print(
+                            "Receive from reader result: ({}) {}".format(
+                                ret, sErrorMessages[ret]
+                            )
+                        )
                         is_done = True
                         continue
                     # self.pndTag.configure(NP_EASY_FRAMING, self.easy_framing)
@@ -255,7 +330,7 @@ class NFCRelay:
                     continue
 
         except AssertionError as error:
-            logger.error('???? WTF with the radio frontend ????')
+            logger.error("???? WTF with the radio frontend ????")
             logger.error(error)
 
     def log_print(self):
@@ -273,26 +348,31 @@ class NFCRelay:
             recvd, ret = self.pndTag.target_receive_bytes(timeout)
             # print("Received frame: {}".format(recvd))
             if ret <= nfc.NFC_SUCCESS:
-                print ("Receive from reader result: ({}) {}".format(ret, sErrorMessages[ret]))
-                return b'', ret
+                print(
+                    "Receive from reader result: ({}) {}".format(
+                        ret, sErrorMessages[ret]
+                    )
+                )
+                return b"", ret
             # pcb.asbyte = recvd[0]
             chunks.append(recvd[1:])
             is_last_chunk = pcb.iblock.chaining == 0
             if not is_last_chunk:
-                pcb.iblock.block_num = pcb.iblock.block_num ^ 1 
+                pcb.iblock.block_num = pcb.iblock.block_num ^ 1
                 self.pndTag.target_send_bytes(bytearray([pcb.asbyte]))
                 # print("Sent frame: {}".format(bytearray([pcb.asbyte])))
         # self.pndTag.configure(NP_EASY_FRAMING, self.easy_framing)
-        data = b''.join(chunks)
+        data = b"".join(chunks)
         return data, len(data)
-
 
     def target_send_fragmented(self, index, data, fragment_size=200):
         # if fragment_size > 128:
         #     print("Fragment size can't be more than 0x80")
         #     return False
         if len(data) > fragment_size:
-            data_chunks = [data[i:i + fragment_size] for i in range(0, len(data), fragment_size)]
+            data_chunks = [
+                data[i : i + fragment_size] for i in range(0, len(data), fragment_size)
+            ]
         else:
             data_chunks = [data]
         # print("Source data: {}".format(data))
@@ -301,12 +381,12 @@ class NFCRelay:
         self.easy_framing = False
         self.pndTag.set_property_bool(nfc.NP_EASY_FRAMING, self.easy_framing)
 
-        pcb = ISO14443_PCB(asbyte=0x12) # 0x12/0x13 for phone testing
+        pcb = ISO14443_PCB(asbyte=0x12)  # 0x12/0x13 for phone testing
         # block_num = 0
         for chunk in data_chunks:
             is_last_chunk = chunk == data_chunks[-1]
-            pcb.iblock.block_num = pcb.iblock.block_num ^ 1 
-            if is_last_chunk: # last chunk
+            pcb.iblock.block_num = pcb.iblock.block_num ^ 1
+            if is_last_chunk:  # last chunk
                 pcb.iblock.chaining = 0
             # else:
 
@@ -315,29 +395,44 @@ class NFCRelay:
             # self.pndTag.configure(NP_EASY_FRAMING, False)
             ret = self.pndTag.send_bytes(frame)
 
-            self.fl.add_frame_by_data(index=index, time=time(), data=frame, result=ret, direction=FrameDirection.TO_READER, easy_framing=False)
+            self.fl.add_frame_by_data(
+                index=index,
+                time=time(),
+                data=frame,
+                result=ret,
+                direction=FrameDirection.TO_READER,
+                easy_framing=False,
+            )
             # print_frame(self.fl.frames[-1])
             if ret <= nfc.NFC_SUCCESS:
-                print ("Send to reader result: ({}) {}".format(ret, sErrorMessages[ret]))
+                print("Send to reader result: ({}) {}".format(ret, sErrorMessages[ret]))
                 return ret
-            
-            # pcb.iblock.block_num = pcb.iblock.block_num ^ 1 
+
+            # pcb.iblock.block_num = pcb.iblock.block_num ^ 1
             # self.pndTag.configure(NP_EASY_FRAMING, False)
             if not is_last_chunk:
                 # sleep(0.1)
                 recvd, ret = self.pndTag.receive_bytes(timeout=0)
-                self.fl.add_frame_by_data(index=index, time=time(), data=recvd, result=ret, direction=FrameDirection.FROM_READER, easy_framing=False)
+                self.fl.add_frame_by_data(
+                    index=index,
+                    time=time(),
+                    data=recvd,
+                    result=ret,
+                    direction=FrameDirection.FROM_READER,
+                    easy_framing=False,
+                )
                 # print_frame(self.fl.frames[-1])
                 if ret <= nfc.NFC_SUCCESS:
-                    print ("Receive from reader result: ({}) {}".format(ret, sErrorMessages[ret]))
+                    print(
+                        "Receive from reader result: ({}) {}".format(
+                            ret, sErrorMessages[ret]
+                        )
+                    )
                     return ret
             else:
                 pass
-            
+
             # sleep fo 0.1 sec to avoid "RF transmission error" on PN532
             sleep(0.05)
 
         return len(data_chunks)
-
-
-

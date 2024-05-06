@@ -3,7 +3,6 @@ from pathlib import Path
 
 from cffi import FFI
 
-
 NFC_HEADERS = Path("/usr/include/nfc/nfc.h")
 NFC_TYPES_HEADERS = Path("/usr/include/nfc/nfc-types.h")
 
@@ -23,8 +22,9 @@ def _fetch_nfc_functions(hfile: Path) -> str:
 def _fetch_nfc_types(hfile: Path) -> str:
     with open(hfile) as f:
         data = f.read()
-        data = data[data.index("#endif") + len("#endif"):
-                    data.index("#  pragma pack()")]
+        data = data[
+            data.index("#endif") + len("#endif") : data.index("#  pragma pack()")
+        ]
         data = data.replace("NFC_BUFSIZE_CONNSTRING", "1024")
         # data = data.replace("typedef ", "")
     return data

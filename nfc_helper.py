@@ -3,18 +3,17 @@ import ctypes
 import json
 import logging
 from binascii import hexlify
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Generator, Any
+from typing import Any, Generator
 
 from hexdump import hexdump
-
 
 logger = logging.getLogger(__name__)
 
 hex_to_str = lambda x: bytearray.fromhex(x.replace(" ", ""))
 str_to_hex = lambda x: x.hex()
-int32_to_le = lambda x: x.to_bytes(4, byteorder='little')
+int32_to_le = lambda x: x.to_bytes(4, byteorder="little")
 
 c_uint8 = ctypes.c_uint8
 
@@ -84,10 +83,10 @@ class FrameDirection(str, Enum):
 
 
 def print_target(target) -> str:
-    uid = hexlify(bytearray(target.nti.nai.abtUid)[:target.nti.nai.szUidLen])
+    uid = hexlify(bytearray(target.nti.nai.abtUid)[: target.nti.nai.szUidLen])
     atqa = hexlify(bytearray(target.nti.nai.abtAtqa))
     sak = hexlify(bytearray(target.nti.nai.btSak)[:1])
-    ats = hexlify(bytearray(target.nti.nai.abtAts)[:target.nti.nai.szAtsLen])
+    ats = hexlify(bytearray(target.nti.nai.abtAts)[: target.nti.nai.szAtsLen])
     result = (
         f"\n\tUID \t: {uid}"
         f"\n\tATQA\t: {atqa}"
@@ -100,50 +99,60 @@ def print_target(target) -> str:
 def print_frame(frame: "Frame") -> None:
     frame_data = frame.data
     if frame_data is None:
-        print('frame_data is None')
+        print("frame_data is None")
         frame_data = bytearray()
 
-    print(f"{frame.index} - {frame.direction} ({frame.time}):"
-          f"\tlen: {len(frame_data)} \tret: {frame.result}")
+    print(
+        f"{frame.index} - {frame.direction} ({frame.time}):"
+        f"\tlen: {len(frame_data)} \tret: {frame.result}"
+    )
     if len(frame_data) > 0:
         if not frame.easy_framing:
             PCB = ISO14443_PCB(asbyte=frame_data[0])
             if PCB.bits.b7_b8 == 0b00:
-                print(f'\tI-Block'
-                      f'\n\t\tPCB: block_num: {PCB.iblock.block_num}'
-                      f'\n\t\tb2_const_1: {PCB.iblock.b2_const_1}'
-                      f'\n\t\thasNAD: {PCB.iblock.hasNAD}'
-                      f'\n\t\thasCID: {PCB.iblock.hasCID}'
-                      f'\n\t\tchaining: {PCB.iblock.chaining}'
-                      f'\n\t\tb6_const_0: {PCB.iblock.b6_const_0}'
-                      f'\n\t\tblockType: {PCB.iblock.blockType}')
+                print(
+                    f"\tI-Block"
+                    f"\n\t\tPCB: block_num: {PCB.iblock.block_num}"
+                    f"\n\t\tb2_const_1: {PCB.iblock.b2_const_1}"
+                    f"\n\t\thasNAD: {PCB.iblock.hasNAD}"
+                    f"\n\t\thasCID: {PCB.iblock.hasCID}"
+                    f"\n\t\tchaining: {PCB.iblock.chaining}"
+                    f"\n\t\tb6_const_0: {PCB.iblock.b6_const_0}"
+                    f"\n\t\tblockType: {PCB.iblock.blockType}"
+                )
             elif PCB.bits.b7_b8 == 0b01:
-                print(f'\tRFU'
-                      f'\n\t\tPCB: b1: {PCB.bits.b1}'
-                      f'\n\t\tb2: {PCB.bits.b2}'
-                      f'\n\t\tb3: {PCB.bits.b3}'
-                      f'\n\t\tb4: {PCB.bits.b4}'
-                      f'\n\t\tb5: {PCB.bits.b5}'
-                      f'\n\t\tb6: {PCB.bits.b6}'
-                      f'\n\t\tb7_b8: {PCB.bits.b7_b8}')
+                print(
+                    f"\tRFU"
+                    f"\n\t\tPCB: b1: {PCB.bits.b1}"
+                    f"\n\t\tb2: {PCB.bits.b2}"
+                    f"\n\t\tb3: {PCB.bits.b3}"
+                    f"\n\t\tb4: {PCB.bits.b4}"
+                    f"\n\t\tb5: {PCB.bits.b5}"
+                    f"\n\t\tb6: {PCB.bits.b6}"
+                    f"\n\t\tb7_b8: {PCB.bits.b7_b8}"
+                )
             elif PCB.bits.b7_b8 == 0b10:
-                print(f'\tR-Block'
-                      f'\n\t\tPCB: block_num: {PCB.rblock.block_num}'
-                      f'\n\t\tb2_const_1: {PCB.rblock.b2_const_1}'
-                      f'\n\t\tb3_const_0: {PCB.rblock.b3_const_0}'
-                      f'\n\t\thasCID: {PCB.rblock.hasCID}'
-                      f'\n\t\tACK_NAK: {PCB.rblock.ACK_NAK}'
-                      f'\n\t\tb6_const_1: {PCB.rblock.b6_const_1}'
-                      f'\n\t\tb7_b8_blockType: {PCB.rblock.b7_b8_blockType}')
+                print(
+                    f"\tR-Block"
+                    f"\n\t\tPCB: block_num: {PCB.rblock.block_num}"
+                    f"\n\t\tb2_const_1: {PCB.rblock.b2_const_1}"
+                    f"\n\t\tb3_const_0: {PCB.rblock.b3_const_0}"
+                    f"\n\t\thasCID: {PCB.rblock.hasCID}"
+                    f"\n\t\tACK_NAK: {PCB.rblock.ACK_NAK}"
+                    f"\n\t\tb6_const_1: {PCB.rblock.b6_const_1}"
+                    f"\n\t\tb7_b8_blockType: {PCB.rblock.b7_b8_blockType}"
+                )
             elif PCB.bits.b7_b8 == 0b11:
-                print(f'\tS-Block'
-                      f'\n\t\tPCB: b1_const_0: {PCB.sblock.b1_const_0}'
-                      f'\n\t\tb2_const_1: {PCB.sblock.b2_const_1}'
-                      f'\n\t\tb3_const_0: {PCB.sblock.b3_const_0}'
-                      f'\n\t\tb4_hasCID: {PCB.sblock.b4_hasCID}'
-                      f'\n\t\tDESELECT_WTX: {PCB.sblock.DESELECT_WTX}'
-                      f'\n\t\tb7_b8_blockType: {PCB.sblock.b7_b8_blockType}')
-    print(hexdump(frame_data, result='return'))
+                print(
+                    f"\tS-Block"
+                    f"\n\t\tPCB: b1_const_0: {PCB.sblock.b1_const_0}"
+                    f"\n\t\tb2_const_1: {PCB.sblock.b2_const_1}"
+                    f"\n\t\tb3_const_0: {PCB.sblock.b3_const_0}"
+                    f"\n\t\tb4_hasCID: {PCB.sblock.b4_hasCID}"
+                    f"\n\t\tDESELECT_WTX: {PCB.sblock.DESELECT_WTX}"
+                    f"\n\t\tb7_b8_blockType: {PCB.sblock.b7_b8_blockType}"
+                )
+    print(hexdump(frame_data, result="return"))
 
     # print ("\tPCB \t:", hexlify(bytearray(frame[:1])))
     # print ("\tCID \t:", hexlify(bytearray(frame[1:2])))
@@ -189,9 +198,7 @@ class Frame:
 
 class FrameLogger:
 
-    def __init__(
-        self, log_fname: str = None, easy_framing: bool = True
-    ) -> None:
+    def __init__(self, log_fname: str = None, easy_framing: bool = True) -> None:
         self._frames: list[Frame] = []
         self.easy_framing = easy_framing
         self.log_fname = log_fname
@@ -224,7 +231,7 @@ class FrameLogger:
         self.save_to(self.log_fname)
 
     def save_to(self, log_path: str, pretty: bool = False) -> None:
-        with open(log_path, 'w') as f:
+        with open(log_path, "w") as f:
             f.write(self.to_json(pretty))
 
     def load(self) -> None:
@@ -234,16 +241,15 @@ class FrameLogger:
 
     def load_from(self, log_path: str) -> None:
         self.clear()
-        with open(log_path, 'r') as f:
+        with open(log_path, "r") as f:
             data = json.load(f)
         for item in data:
-            item['data'] = bytearray.fromhex(item['data'])
+            item["data"] = bytearray.fromhex(item["data"])
             self.frames.append(Frame(**item))
 
     def to_json(self, pretty: bool = False) -> str:
         data = [frame.to_dict() for frame in self.frames]
-        return json.dumps(
-            data, cls=BytearrayEncoder, indent=4 if pretty else None)
+        return json.dumps(data, cls=BytearrayEncoder, indent=4 if pretty else None)
 
 
 @dataclass
@@ -276,23 +282,24 @@ class EmulatedInitiator(FrameLogger):
     def initiator_transceive_bytes(self, data, timeout=0) -> tuple:
         # print("initiator_transceive_bytes: ", data)
         for req in self.frames:
-            if (req.direction == FrameDirection.FROM_READER
-                    and req.data[:5] == data[:5]):
+            if req.direction == FrameDirection.FROM_READER and req.data[:5] == data[:5]:
                 idx = req.index
                 # print("Found req frame: ", idx, req)
                 for resp in self.frames:
-                    if (resp.direction == FrameDirection.FROM_CARD
-                            and resp.index == idx + 1):
+                    if (
+                        resp.direction == FrameDirection.FROM_CARD
+                        and resp.index == idx + 1
+                    ):
                         # print("Found resp frame: ", resp)
                         return resp.data, resp.result
         print("Can't find frame for request: ", data)
-        return b'', 0
+        return b"", 0
 
 
 def chunks(lst: list, n: int) -> Generator:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
-        yield lst[i:i + n]
+        yield lst[i : i + n]
 
 
 # class BytearrayDecoder(json.JSONDecoder):

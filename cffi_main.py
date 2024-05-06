@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 from libnfc_ffi import ffi, nfc
 
-
 ctx = ffi.new("nfc_context**")
 
 print("nfc_init")
