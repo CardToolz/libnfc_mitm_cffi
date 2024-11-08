@@ -8,8 +8,27 @@ from dataclasses import dataclass
 import dataclasses
 import json
 
+import functools
 import logging
+
+
+
 logger = logging.getLogger(__name__)
+
+def log_debug(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        args_repr = [repr(a) for a in args]
+        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+        signature = ", ".join(args_repr + kwargs_repr)
+        logger.debug(f"function {func.__name__}() called with args {signature}")
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except Exception as e:
+            logger.exception(f"Exception raised in {func.__name__}. exception: {str(e)}")
+            raise e
+    return wrapper
 
 
 hex2str = lambda x: bytearray.fromhex(x.replace(" ", ""))
@@ -79,7 +98,7 @@ def print_target(target):
     ret += ("\tATQA\t: {}\n".format(binascii.hexlify(bytearray(target.nti.nai.abtAtqa))))
     ret += ("\tSAK \t: {}\n".format(binascii.hexlify(bytearray(target.nti.nai.btSak)[:1])))
     ret += ("\tATS \t: {}\n".format(binascii.hexlify(bytearray(target.nti.nai.abtAts)[:target.nti.nai.szAtsLen])))
-    return ret
+    return str(ret)
 
 def print_frame(frame):
         # frame_data = frame['data'].encode('utf-8')
@@ -304,7 +323,7 @@ class EmulatedInitiator(FrameLogger):
     def configure(self, option, value): # for backward compatibility from relay as data source
         pass 
 
-    def initiator_transceive_bytes(self, data, timeout=0): # for backward compatibility from relay as data source
+    def transceive_bytes(self, data, timeout=0): # for backward compatibility from relay as data source
         # print("initiator_transceive_bytes: ", data)
         for req in self.frame_list:
             if (req.direction == FrameDirection.FromReader) and (req.data[:5] == data[:5]):
@@ -316,6 +335,17 @@ class EmulatedInitiator(FrameLogger):
                         return resp.data, resp.result
         print("Can't find frame for request: ", data)
         return b'', 0
+
+    def set_property_bool(self, option, value: bool):
+        logger.debug("set_property_bool")
+        pass
+    
+    def set_property_int(self, option, value: int):
+        logger.debug("set_property_int")
+        pass
+
+    def get_last_err(self):
+        return 0
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""

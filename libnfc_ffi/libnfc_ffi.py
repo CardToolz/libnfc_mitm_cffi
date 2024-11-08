@@ -20,6 +20,12 @@ def fetch_nfc_types(hfile):
         data = f.read() 
         data = data[data.index("#endif") + len("#endif"): data.index("#  pragma pack()")]
         data = data.replace("NFC_BUFSIZE_CONNSTRING", "1024")
+        # cffi/cparser.py:436: UserWarning: #pragma in cdef() are entirely ignored. 
+        # They should be removed for now, otherwise your code might behave differently 
+        # in a future version of CFFI if #pragma support gets added. 
+        # Note that '#pragma pack' needs to be replaced with the 'packed' keyword argument to cdef().
+        data = data.replace("#  pragma pack()", "")
+        data = data.replace("#  pragma pack(1)", "")
         # data = data.replace("typedef ", "")
     return data
 
